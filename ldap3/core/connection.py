@@ -50,16 +50,9 @@ from ..protocol.rfc2849 import operation_to_ldif, add_ldif_header
 from ..protocol.sasl.digestMd5 import sasl_digest_md5
 from ..protocol.sasl.external import sasl_external
 from ..protocol.sasl.plain import sasl_plain
-from ..strategy.sync import SyncStrategy
-from ..strategy.mockAsync import MockAsyncStrategy
-from ..strategy.asynchronous import AsyncStrategy
-from ..strategy.reusable import ReusableStrategy
-from ..strategy.restartable import RestartableStrategy
-from ..strategy.ldifProducer import LdifProducerStrategy
-from ..strategy.mockSync import MockSyncStrategy
-from ..strategy.asyncStream import AsyncStreamStrategy
 from ..operation.unbind import unbind_operation
 from ..protocol.rfc2696 import paged_search_control
+from ..strategy.base import BaseStrategy
 from .usage import ConnectionUsage
 from .tls import Tls
 from .exceptions import LDAPUnknownStrategyError, LDAPBindError, LDAPUnknownAuthenticationMethodError, \
@@ -75,15 +68,6 @@ SASL_AVAILABLE_MECHANISMS = [EXTERNAL,
                              DIGEST_MD5,
                              GSSAPI,
                              PLAIN]
-
-CLIENT_STRATEGIES = [SYNC,
-                     ASYNC,
-                     LDIF,
-                     RESTARTABLE,
-                     REUSABLE,
-                     MOCK_SYNC,
-                     MOCK_ASYNC,
-                     ASYNC_STREAM]
 
 
 def _format_socket_endpoint(endpoint):
@@ -179,7 +163,7 @@ class Connection(object):
                  auto_bind=AUTO_BIND_DEFAULT,
                  version=3,
                  authentication=None,
-                 client_strategy=SYNC,
+                 client_strategy=None,
                  auto_referrals=True,
                  auto_range=True,
                  sasl_mechanism=None,
@@ -203,8 +187,9 @@ class Connection(object):
 
         conf_default_pool_name = get_config_parameter('DEFAULT_THREADED_POOL_NAME')
         self.connection_lock = RLock()  # re-entrant lock to ensure that operations in the Connection object are executed atomically in the same thread
+        client_strategy = client_strategy or SYNC
         with self.connection_lock:
-            if client_strategy not in CLIENT_STRATEGIES:
+            if client_strategy == BaseStrategy or not issubclass(client_strategy, BaseStrategy):
                 self.last_error = 'unknown client connection strategy'
                 if log_enabled(ERROR):
                     log(ERROR, '%s for <%s>', self.last_error, self)
@@ -291,28 +276,7 @@ class Connection(object):
             #     if log_enabled(EXTENDED):
             #         log(EXTENDED, 'user name sanitized to <%s> for simple authentication via <%s>', self.user, self)
 
-            if self.strategy_type == SYNC:
-                self.strategy = SyncStrategy(self)
-            elif self.strategy_type == ASYNC:
-                self.strategy = AsyncStrategy(self)
-            elif self.strategy_type == LDIF:
-                self.strategy = LdifProducerStrategy(self)
-            elif self.strategy_type == RESTARTABLE:
-                self.strategy = RestartableStrategy(self)
-            elif self.strategy_type == REUSABLE:
-                self.strategy = ReusableStrategy(self)
-                self.lazy = False
-            elif self.strategy_type == MOCK_SYNC:
-                self.strategy = MockSyncStrategy(self)
-            elif self.strategy_type == MOCK_ASYNC:
-                self.strategy = MockAsyncStrategy(self)
-            elif self.strategy_type == ASYNC_STREAM:
-                self.strategy = AsyncStreamStrategy(self)
-            else:
-                self.last_error = 'unknown strategy'
-                if log_enabled(ERROR):
-                    log(ERROR, '%s for <%s>', self.last_error, self)
-                raise LDAPUnknownStrategyError(self.last_error)
+            self.strategy = self.strategy_type(self)
 
             # maps strategy functions to connection functions
             self.send = self.strategy.send

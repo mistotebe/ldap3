@@ -25,6 +25,16 @@
 
 from types import GeneratorType
 
+# client strategies
+from .strategy.sync import SyncStrategy as SYNC
+from .strategy.asynchronous import AsyncStrategy as ASYNC
+from .strategy.ldifProducer import LdifProducerStrategy as LDIF
+from .strategy.restartable import RestartableStrategy as RESTARTABLE
+from .strategy.reusable import ReusableStrategy as REUSABLE
+from .strategy.mockSync import MockSyncStrategy as MOCK_SYNC
+from .strategy.mockAsync import MockAsyncStrategy as MOCK_ASYNC
+from .strategy.asyncStream import AsyncStreamStrategy as ASYNC_STREAM
+
 # authentication
 ANONYMOUS = 'ANONYMOUS'
 SIMPLE = 'SIMPLE'
@@ -71,16 +81,6 @@ MODIFY_ADD = 'MODIFY_ADD'
 MODIFY_DELETE = 'MODIFY_DELETE'
 MODIFY_REPLACE = 'MODIFY_REPLACE'
 MODIFY_INCREMENT = 'MODIFY_INCREMENT'
-
-# client strategies
-SYNC = 'SYNC'
-ASYNC = 'ASYNC'
-LDIF = 'LDIF'
-RESTARTABLE = 'RESTARTABLE'
-REUSABLE = 'REUSABLE'
-MOCK_SYNC = 'MOCK_SYNC'
-MOCK_ASYNC = 'MOCK_ASYNC'
-ASYNC_STREAM = 'ASYNC_STREAM'
 
 # get rootDSE info
 NONE = 'NO_INFO'
